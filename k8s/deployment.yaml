@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-agent
+  namespace: roychshao
+  labels:
+    app: hermes-agent
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hermes-agent
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: init-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /opt/data && chmod -R 775 /opt/data"]
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+      containers:
+      - name: hermes-agent
+        image: nousresearch/hermes-agent:latest
+        imagePullPolicy: Always
+        args: ["gateway", "run"]
+        ports:
+        - containerPort: 8642
+        env:
+        - name: HOME
+          value: /opt/data
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: ENVIRONMENT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: LOG_LEVEL
+        - name: GATEWAY_HEALTH_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: GATEWAY_HEALTH_URL
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+      volumes:
+      - name: hermes-data
+        persistentVolumeClaim:
+          claimName: hermes-agent-pvc
