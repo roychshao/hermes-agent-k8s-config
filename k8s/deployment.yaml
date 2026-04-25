@@ -22,7 +22,7 @@ spec:
       initContainers:
       - name: init-permissions
         image: busybox
-        command: ["sh", "-c", "mkdir -p /opt/data/webui /opt/data/workspace && chown -R 1000:1000 /opt/data && chmod -R 775 /opt/data"]
+        command: ["sh", "-c", "mkdir -p /opt/data/webui /opt/data/workspace && chown -R 1000:1000 /opt/data && chmod -R 777 /opt/data"]
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data
