@@ -34,10 +34,10 @@ spec:
         ports:
         - containerPort: 8642
         env:
-        - name: HERMES_UID
-          value: "10000"
-        - name: HERMES_GID
-          value: "10000"
+        # - name: HERMES_UID
+        #   value: "10000"
+        # - name: HERMES_GID
+        #   value: "10000"
         - name: HOME
           value: /opt/data
         - name: ENVIRONMENT
