@@ -15,4 +15,8 @@ spec:
       protocol: TCP
       port: 9119
       targetPort: 9119
+    - name: webui
+      protocol: TCP
+      port: 8787
+      targetPort: 8787
   type: ClusterIP
