@@ -57,6 +57,36 @@ spec:
             configMapKeyRef:
               name: hermes-agent-config
               key: GATEWAY_HEALTH_URL
+        - name: HERMES_WEBUI_AGENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_AGENT_DIR
+        - name: HERMES_WEBUI_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_PORT
+        - name: HERMES_WEBUI_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_HOST
+        - name: HERMES_WEBUI_STATE_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_STATE_DIR
+        - name: HERMES_HOME
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_HOME
+        - name: HERMES_WEBUI_DEFAULT_WORKSPACE
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_DEFAULT_WORKSPACE
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data

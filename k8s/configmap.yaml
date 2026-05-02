@@ -7,6 +7,7 @@ data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "info"
   GATEWAY_HEALTH_URL: "http://localhost:8642"
+  HERMES_WEBUI_AGENT_DIR: "/opt/hermes"
   HERMES_WEBUI_PORT: "8787"
   HERMES_WEBUI_HOST: "0.0.0.0"
   HERMES_WEBUI_STATE_DIR: "/opt/data/webui"
