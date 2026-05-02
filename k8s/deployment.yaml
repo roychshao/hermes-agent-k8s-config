@@ -26,6 +26,12 @@ spec:
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data
+      - name: sync-agent-src
+        image: nousresearch/hermes-agent:latest
+        command: ["sh", "-c", "mkdir -p /opt/data/hermes-agent-src && cp -r /opt/hermes/. /opt/data/hermes-agent-src/ && chown -R 1000:1000 /opt/data/hermes-agent-src"]
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
       containers:
       - name: hermes-agent
         image: nousresearch/hermes-agent:latest
@@ -100,6 +106,13 @@ spec:
             configMapKeyRef:
               name: hermes-agent-config
               key: HERMES_WEBUI_DEFAULT_WORKSPACE
+        - name: HERMES_WEBUI_AGENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: HERMES_WEBUI_AGENT_DIR
+        - name: PYTHONPATH
+          value: "/opt/data/hermes-agent-src:/app"
         - name: BRAVE_API_KEY
           valueFrom:
             secretKeyRef:
