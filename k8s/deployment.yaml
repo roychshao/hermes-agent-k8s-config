@@ -17,6 +17,7 @@ spec:
       labels:
         app: hermes-agent
     spec:
+      serviceAccountName: hermes-agent
       securityContext:
         fsGroup: 10000
       initContainers:
@@ -33,6 +34,7 @@ spec:
         args: ["gateway", "run"]
         ports:
         - containerPort: 8642
+        - containerPort: 8787
         env:
         - name: HOME
           value: /opt/data
@@ -81,6 +83,11 @@ spec:
             configMapKeyRef:
               name: hermes-agent-config
               key: HERMES_WEBUI_DEFAULT_WORKSPACE
+        - name: HERMES_WEBUI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-agent-secret
+              key: HERMES_WEBUI_PASSWORD
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data
@@ -91,68 +98,20 @@ spec:
           requests:
             cpu: "1"
             memory: "2Gi"
-      # - name: hermes-webui
-      #   image: ghcr.io/nesquena/hermes-webui:latest
-      #   imagePullPolicy: Always
-      #   ports:
-      #   - containerPort: 8787
-      #   env:
-      #   - name: WANTED_UID
-      #     value: "10000"
-      #   - name: WANTED_GID
-      #     value: "10000"
-      #   - name: HERMES_HOME
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_HOME
-      #   - name: HERMES_WEBUI_PORT
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_WEBUI_PORT
-      #   - name: HERMES_WEBUI_HOST
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_WEBUI_HOST
-      #   - name: HERMES_WEBUI_STATE_DIR
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_WEBUI_STATE_DIR
-      #   - name: HERMES_WEBUI_DEFAULT_WORKSPACE
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_WEBUI_DEFAULT_WORKSPACE
-      #   - name: HERMES_WEBUI_AGENT_DIR
-      #     valueFrom:
-      #       configMapKeyRef:
-      #         name: hermes-agent-config
-      #         key: HERMES_WEBUI_AGENT_DIR
-      #   - name: PYTHONPATH
-      #     value: "/opt/data/hermes-agent-src:/app"
-      #   - name: BRAVE_API_KEY
-      #     valueFrom:
-      #       secretKeyRef:
-      #         name: hermes-agent-secret
-      #         key: BRAVE_API_KEY
-      #   - name: LITE_LLM_API_KEY
-      #     valueFrom:
-      #       secretKeyRef:
-      #         name: hermes-agent-secret
-      #         key: LITE_LLM_API_KEY
-      #   volumeMounts:
-      #   - name: hermes-data
-      #     mountPath: /opt/data
-      #   resources:
-      #     limits:
-      #       cpu: "1"
-      #       memory: "2Gi"
-      #     requests:
-      #       cpu: "0.5"
-      #       memory: "1Gi"
+      - name: tailscale
+        image: tailscale/tailscale:latest
+        env:
+        - name: TS_AUTHKEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-agent-secret
+              key: TS_AUTHKEY
+        - name: TS_KUBE_SECRET
+          value: tailscale-state
+        - name: TS_USERSPACE
+          value: "true"
+        securityContext:
+          runAsUser: 1000
       volumes:
       - name: hermes-data
         persistentVolumeClaim:

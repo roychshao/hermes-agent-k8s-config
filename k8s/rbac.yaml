@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hermes-agent
+  namespace: roychshao
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hermes-agent-tailscale
+  namespace: roychshao
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  # Tailscale needs to get, create, and update the secret where it stores its state
+  verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hermes-agent-tailscale
+  namespace: roychshao
+subjects:
+- kind: ServiceAccount
+  name: hermes-agent
+roleRef:
+  kind: Role
+  name: hermes-agent-tailscale
+  apiGroup: rbac.authorization.k8s.io
