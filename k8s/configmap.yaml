@@ -13,3 +13,5 @@ data:
   HERMES_WEBUI_STATE_DIR: "/opt/data/webui"
   HERMES_HOME: "/opt/data"
   HERMES_WEBUI_DEFAULT_WORKSPACE: "/opt/data/workspace"
+  LLM_API_BASE: "http://litellm-service.andyjjrt.svc.cluster.local:4000/v1"
+  LLM_MODEL: "DGX/model"

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  stock-research-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Uses environment variable DOCKER_USERNAME or defaults to a placeholder
+    image: ${DOCKER_USERNAME:-yourusername}/stock-research-agent:latest
+    container_name: stock-research-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_API_BASE=${LLM_API_BASE}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gemini-1.5-flash}
+      - FINMIND_API_TOKEN=${FINMIND_API_TOKEN}
+      # Default to sse transport in Docker container to expose over network port 8000
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-sse}
+    volumes:
+      - stock_data:/app/db/data
+      - stock_reports:/app/reports
+    restart: unless-stopped
+
+volumes:
+  # Persists the SQLite database (portfolio.db)
+  stock_data:
+  # Persists the generated Markdown research reports
+  stock_reports:

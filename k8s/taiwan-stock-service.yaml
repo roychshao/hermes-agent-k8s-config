@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: taiwan-stock-reports-pvc
+  namespace: roychshao
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taiwan-stock-service
+  namespace: roychshao
+  labels:
+    app: taiwan-stock-service
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: mcp-sse
+  selector:
+    app: taiwan-stock-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taiwan-stock-service
+  namespace: roychshao
+  labels:
+    app: taiwan-stock-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taiwan-stock-service
+  template:
+    metadata:
+      labels:
+        app: taiwan-stock-service
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      initContainers:
+      - name: init-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /app/reports && chmod -R 775 /app/reports"]
+        volumeMounts:
+        - name: reports-volume
+          mountPath: /app/reports
+      containers:
+        - name: taiwan-stock-service
+          image: roychshao/taiwan-stock-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: mcp-sse
+          env:
+            - name: HOME
+              value: "/tmp"
+            - name: DB_TYPE
+              value: "postgres"
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "portfolio"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agent-secret
+                  key: POSTGRES_PASSWORD
+            - name: LLM_API_BASE
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-agent-config
+                  key: LLM_API_BASE
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agent-secret
+                  key: LITE_LLM_API_KEY
+            - name: LLM_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-agent-config
+                  key: LLM_MODEL
+            - name: FINMIND_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agent-secret
+                  key: FINMIND_API_TOKEN
+            - name: MCP_TRANSPORT
+              value: "sse"
+            - name: MCP_HOST
+              value: "0.0.0.0"
+            - name: PYTHONPATH
+              value: "."
+          volumeMounts:
+            - name: reports-volume
+              mountPath: /app/reports
+          resources:
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: taiwan-stock-reports-pvc

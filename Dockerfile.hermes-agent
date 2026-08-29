@@ -1,0 +1,30 @@
+FROM nousresearch/hermes-agent:latest
+
+USER root
+
+# Install system dependencies for audio, voice, and CLI voice mode
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    portaudio19-dev \
+    ffmpeg \
+    libopus0 \
+    espeak-ng \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install the [voice] extra dependencies inside the virtualenv
+WORKDIR /opt/hermes
+RUN uv pip install --python /opt/hermes/.venv/bin/python -e ".[voice]"
+
+# Pre-install edge-tts in the virtualenv
+RUN uv pip install --python /opt/hermes/.venv/bin/python edge-tts
+
+# Copy and run patch scripts to customize the bot and fix voice issues
+COPY patch_discord_status.py /tmp/patch_discord_status.py
+COPY patch_voice_playback.py /tmp/patch_voice_playback.py
+COPY patch_voice_temp_paths.py /tmp/patch_voice_temp_paths.py
+RUN python3 /tmp/patch_discord_status.py && rm /tmp/patch_discord_status.py \
+    && python3 /tmp/patch_voice_playback.py && rm /tmp/patch_voice_playback.py \
+    && python3 /tmp/patch_voice_temp_paths.py && rm /tmp/patch_voice_temp_paths.py
+
+USER hermes

@@ -20,16 +20,45 @@ spec:
       serviceAccountName: hermes-agent
       securityContext:
         fsGroup: 10000
+        fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
       - name: init-permissions
         image: busybox
-        command: ["sh", "-c", "chown -R 1000:1000 /opt/data && chmod -R 775 /opt/data"]
+        command: ["sh", "-c", "chown 10000:10000 /opt/data && chmod 775 /opt/data"]
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+      - name: init-mcp-config
+        image: busybox
+        command:
+        - "sh"
+        - "-c"
+        - |
+          if [ ! -f /opt/data/config.yaml ]; then
+            cat << 'EOF' > /opt/data/config.yaml
+          mcp_servers:
+            taiwan-stock-service:
+              url: "http://taiwan-stock-service:8000/sse"
+              transport: sse
+          EOF
+          elif ! grep -q "taiwan-stock-service" /opt/data/config.yaml; then
+            cat << 'EOF' >> /opt/data/config.yaml
+          
+          mcp_servers:
+            taiwan-stock-service:
+              url: "http://taiwan-stock-service:8000/sse"
+              transport: sse
+          EOF
+          fi
+          chown -R 10000:10000 /opt/data/config.yaml
+          mkdir -p /opt/data/site-packages
+          chown -R 10000:10000 /opt/data/site-packages
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data
       containers:
       - name: hermes-agent
-        image: nousresearch/hermes-agent:latest
+        image: roychshao/hermes-agent:latest
         imagePullPolicy: Always
         args: ["gateway", "run"]
         ports:
@@ -38,6 +67,14 @@ spec:
         env:
         - name: HOME
           value: /opt/data
+        - name: PYTHONPATH
+          value: /opt/data/site-packages
+        - name: DISCORD_ALLOW_ALL_USERS
+          value: "true"
+        - name: AGENT_BROWSER_ARGS
+          value: "--no-sandbox,--disable-dev-shm-usage"
+        - name: AGENT_BROWSER_EXECUTABLE_PATH
+          value: "/opt/hermes/.playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell"
         - name: ENVIRONMENT
           valueFrom:
             configMapKeyRef:
@@ -88,6 +125,26 @@ spec:
             secretKeyRef:
               name: hermes-agent-secret
               key: HERMES_WEBUI_PASSWORD
+        - name: BRAVE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-agent-secret
+              key: BRAVE_API_KEY
+        - name: LITE_LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-agent-secret
+              key: LITE_LLM_API_KEY
+        - name: LLM_API_BASE
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: LLM_API_BASE
+        - name: LLM_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-agent-config
+              key: LLM_MODEL
         volumeMounts:
         - name: hermes-data
           mountPath: /opt/data
@@ -98,20 +155,6 @@ spec:
           requests:
             cpu: "1"
             memory: "2Gi"
-      - name: tailscale
-        image: tailscale/tailscale:latest
-        env:
-        - name: TS_AUTHKEY
-          valueFrom:
-            secretKeyRef:
-              name: hermes-agent-secret
-              key: TS_AUTHKEY
-        - name: TS_KUBE_SECRET
-          value: tailscale-state
-        - name: TS_USERSPACE
-          value: "true"
-        securityContext:
-          runAsUser: 1000
       volumes:
       - name: hermes-data
         persistentVolumeClaim:

@@ -1,2 +1,25 @@
 kubeseal
 create_secrets.sh
+.agents
+reports
+portfolio.db
+.coverage
+.env
+coverage.xml
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*~
