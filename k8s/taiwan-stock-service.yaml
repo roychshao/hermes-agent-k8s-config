@@ -34,6 +34,8 @@ metadata:
     app: taiwan-stock-service
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: taiwan-stock-service
@@ -108,12 +110,12 @@ spec:
             - name: reports-volume
               mountPath: /app/reports
           resources:
-            limits:
-              cpu: "1"
-              memory: "512Mi"
             requests:
-              cpu: "500m"
+              cpu: "100m"
               memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
       volumes:
         - name: reports-volume
           persistentVolumeClaim:

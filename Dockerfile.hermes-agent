@@ -1,15 +1,28 @@
-FROM nousresearch/hermes-agent:latest
+FROM nousresearch/hermes-agent@sha256:16667552a15d0fba9377874a77e5a59e1f10e4779cf687ba130c7bac725be946
 
 USER root
 
-# Install system dependencies for audio, voice, and CLI voice mode
+# Install system dependencies for audio, voice, dev tools, and Docker CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo \
+    curl \
+    wget \
+    git \
+    jq \
+    ca-certificates \
     portaudio19-dev \
     ffmpeg \
     libopus0 \
     espeak-ng \
     build-essential \
     python3-dev \
+    docker.io \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m) -o /usr/local/lib/docker/cli-plugins/docker-compose \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+    && ln -s /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose \
+    && echo "hermes ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/hermes \
+    && chmod 0440 /etc/sudoers.d/hermes \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the [voice] extra dependencies inside the virtualenv
@@ -19,12 +32,18 @@ RUN uv pip install --python /opt/hermes/.venv/bin/python -e ".[voice]"
 # Pre-install edge-tts in the virtualenv
 RUN uv pip install --python /opt/hermes/.venv/bin/python edge-tts
 
-# Copy and run patch scripts to customize the bot and fix voice issues
+# Copy and run patch scripts to customize the bot, fix voice issues, and enable kanban_list
 COPY patch_discord_status.py /tmp/patch_discord_status.py
 COPY patch_voice_playback.py /tmp/patch_voice_playback.py
 COPY patch_voice_temp_paths.py /tmp/patch_voice_temp_paths.py
+COPY patch_kanban_tools.py /tmp/patch_kanban_tools.py
 RUN python3 /tmp/patch_discord_status.py && rm /tmp/patch_discord_status.py \
     && python3 /tmp/patch_voice_playback.py && rm /tmp/patch_voice_playback.py \
-    && python3 /tmp/patch_voice_temp_paths.py && rm /tmp/patch_voice_temp_paths.py
+    && python3 /tmp/patch_voice_temp_paths.py && rm /tmp/patch_voice_temp_paths.py \
+    && python3 /tmp/patch_kanban_tools.py && rm /tmp/patch_kanban_tools.py
+
+# Copy and install gitea-tool CLI
+COPY gitea_helper.py /usr/local/bin/gitea-tool
+RUN chmod +x /usr/local/bin/gitea-tool
 
 USER hermes

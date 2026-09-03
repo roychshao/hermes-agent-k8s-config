@@ -18,9 +18,6 @@ spec:
         app: hermes-agent
     spec:
       serviceAccountName: hermes-agent
-      securityContext:
-        fsGroup: 10000
-        fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
       - name: init-permissions
         image: busybox
@@ -36,6 +33,8 @@ spec:
         - |
           if [ ! -f /opt/data/config.yaml ]; then
             cat << 'EOF' > /opt/data/config.yaml
+          dashboard:
+            show_token_analytics: true
           mcp_servers:
             taiwan-stock-service:
               url: "http://taiwan-stock-service:8000/sse"
@@ -43,7 +42,7 @@ spec:
           EOF
           elif ! grep -q "taiwan-stock-service" /opt/data/config.yaml; then
             cat << 'EOF' >> /opt/data/config.yaml
-          
+
           mcp_servers:
             taiwan-stock-service:
               url: "http://taiwan-stock-service:8000/sse"
@@ -58,17 +57,29 @@ spec:
           mountPath: /opt/data
       containers:
       - name: hermes-agent
-        image: roychshao/hermes-agent:latest
-        imagePullPolicy: Always
+        image: roychshao/hermes-agent@sha256:53791e5d08b8c4d8030ae663004b7e52b70b8193a2332b3ad48362a5205c7866
+        imagePullPolicy: IfNotPresent
         args: ["gateway", "run"]
         ports:
         - containerPort: 8642
         - containerPort: 8787
+        - containerPort: 9119
         env:
+        - name: DOCKER_HOST
+          value: "tcp://localhost:2375"
         - name: HOME
           value: /opt/data
         - name: PYTHONPATH
           value: /opt/data/site-packages
+        - name: HERMES_DASHBOARD
+          value: "true"
+        - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+          value: "admin"
+        - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-agent-secret
+              key: HERMES_WEBUI_PASSWORD
         - name: DISCORD_ALLOW_ALL_USERS
           value: "true"
         - name: AGENT_BROWSER_ARGS
@@ -149,13 +160,33 @@ spec:
         - name: hermes-data
           mountPath: /opt/data
         resources:
+          requests:
+            cpu: "2"
+            memory: "5Gi"
           limits:
+            cpu: "2.5"
+            memory: "7Gi"
+      - name: dind
+        image: docker:27-dind
+        securityContext:
+          privileged: true
+        env:
+        - name: DOCKER_TLS_CERTDIR
+          value: ""
+        resources:
+          requests:
             cpu: "2"
             memory: "4Gi"
-          requests:
-            cpu: "1"
-            memory: "2Gi"
+          limits:
+            cpu: "3.5"
+            memory: "7Gi"
+        volumeMounts:
+        - name: dind-storage
+          mountPath: /var/lib/docker
       volumes:
       - name: hermes-data
         persistentVolumeClaim:
           claimName: hermes-agent-pvc
+      - name: dind-storage
+        emptyDir:
+          sizeLimit: 20Gi

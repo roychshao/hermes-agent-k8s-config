@@ -34,6 +34,7 @@ kubectl apply -f ./k8s/rbac.yaml
 kubectl apply -f ./k8s/configmap.yaml
 kubectl apply -f ./k8s/pvc.yaml
 kubectl apply -f ./k8s/postgres.yaml
+kubectl apply -f ./k8s/gitea.yaml
 kubectl apply -f ./k8s/taiwan-stock-service.yaml
 kubectl apply -f ./k8s/deployment.yaml
 kubectl apply -f ./k8s/service.yaml
