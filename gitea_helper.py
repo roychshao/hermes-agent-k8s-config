@@ -227,6 +227,26 @@ def cmd_review_pr(args):
         sys.exit(1)
     print(f"[+] Review '{event}' submitted on PR #{pr} by {user}")
 
+def cmd_request_review(args):
+    user, pwd = get_auth(args.user)
+    org = args.org or DEFAULT_ORG
+    project = args.project
+    pr = args.pr
+    req_revs = getattr(args, "reviewers", None) or "dev-reviewer"
+    reviewers = [rv.strip() for rv in req_revs.split(",") if rv.strip()]
+    if not reviewers:
+        print("[!] No reviewers specified", file=sys.stderr)
+        sys.exit(1)
+
+    r = requests.post(f"{GITEA_API}/repos/{org}/{project}/pulls/{pr}/requested_reviewers", auth=(user, pwd), json={
+        "reviewers": reviewers
+    })
+    if r.status_code in (200, 201):
+        print(f"[+] Re-requested reviewer(s) {reviewers} on PR #{pr}")
+    else:
+        print(f"[!] Failed to request reviewers: {r.status_code} {r.text}", file=sys.stderr)
+        sys.exit(1)
+
 def cmd_merge_pr(args):
     user, pwd = get_auth(args.user)
     org = args.org or DEFAULT_ORG
@@ -520,6 +540,15 @@ def main():
     p_rev.add_argument("--comment", required=True)
     p_rev.add_argument("--user", default=None)
     p_rev.set_defaults(func=cmd_review_pr)
+
+    # request-review
+    p_req_rev = subparsers.add_parser("request-review", help="Request or re-request review on a pull request")
+    p_req_rev.add_argument("--project", required=True, help="Project name")
+    p_req_rev.add_argument("--org", default=DEFAULT_ORG, help="Organization name")
+    p_req_rev.add_argument("--pr", type=int, required=True, help="PR number")
+    p_req_rev.add_argument("--reviewers", default="dev-reviewer", help="Comma-separated list of reviewers to request")
+    p_req_rev.add_argument("--user", default=None, help="User to authenticate as")
+    p_req_rev.set_defaults(func=cmd_request_review)
 
     # merge-pr
     p_mrg = subparsers.add_parser("merge-pr")

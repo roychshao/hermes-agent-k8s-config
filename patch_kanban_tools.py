@@ -78,6 +78,13 @@ try:
         code = code.replace(target_link, replacement_link)
         print("Patched KANBAN_LINK_SCHEMA description successfully!")
 
+    # 4. Support workspace as alias for workspace_kind in _handle_create
+    target_ws = '    workspace_kind = args.get("workspace_kind")'
+    replacement_ws = '    workspace_kind = args.get("workspace_kind") or args.get("workspace")'
+    if target_ws in code:
+        code = code.replace(target_ws, replacement_ws, 1)
+        print("Patched workspace_kind alias in _handle_create successfully!")
+
     with open(filepath, "w") as f:
         f.write(code)
     print("kanban_tools.py patch completed successfully!")
