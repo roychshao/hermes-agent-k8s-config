@@ -159,6 +159,8 @@ graph TD
    透過 `task_links` 關聯表（`parent_id` $\rightarrow$ `child_id`）精確定義任務先後約束。一個任務可同時具備多個父任務（如代碼審查需等待後端與前端兩者皆完成 PR）。
 3. **Worker 模式沙盒保護（Worker Isolation Guard）**：
    當 Worker 被喚醒時，系統自動注入環境變數 `HERMES_KANBAN_TASK=<id>`。底層工具鏈會強制將其權限降級為「唯讀與回報」——**Worker 嚴禁隨意修改其他任務的狀態或相依性**，僅允許檢視狀態與在自身工單完成時呼叫 `kanban_complete()`。
+4. **Git 身分動態綁定與環境隔離（Dynamic Git Identity Injection）**：
+   在派發 Worker 進程時，系統依據工單所指派的 Profile 動態注入 `GIT_AUTHOR_NAME`、`GIT_AUTHOR_EMAIL`、`GIT_COMMITTER_NAME` 與 `GIT_COMMITTER_EMAIL`。利用 Git 環境變數高於本地設定檔的優先級特徵，確保每個 Agent 在獨立的 Git Worktree 進行提交時，擁有清晰、獨立且可追溯的程式碼責任審計記錄。
 
 ---
 
