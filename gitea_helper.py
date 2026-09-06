@@ -227,6 +227,47 @@ def cmd_review_pr(args):
         sys.exit(1)
     print(f"[+] Review '{event}' submitted on PR #{pr} by {user}")
 
+def cmd_dismiss_review(args):
+    user, pwd = get_auth(args.user)
+    org = args.org or DEFAULT_ORG
+    project = args.project
+    pr = args.pr
+    message = clean_text(args.message) or "Dismissed by QA/PM due to integration test failure or review reset."
+
+    if getattr(args, "review_id", None):
+        r = requests.post(f"{GITEA_API}/repos/{org}/{project}/pulls/{pr}/reviews/{args.review_id}/dismissals", auth=(user, pwd), json={
+            "message": message
+        })
+        if r.status_code not in (200, 201):
+            print(f"[!] Failed to dismiss review #{args.review_id}: {r.status_code} {r.text}", file=sys.stderr)
+            sys.exit(1)
+        print(f"[+] Dismissed review #{args.review_id} on PR #{pr}")
+        return
+
+    # Find and dismiss all active (non-dismissed) APPROVED reviews
+    r = requests.get(f"{GITEA_API}/repos/{org}/{project}/pulls/{pr}/reviews", auth=(user, pwd))
+    if r.status_code != 200:
+        print(f"[!] Failed to fetch reviews for PR #{pr}: {r.status_code} {r.text}", file=sys.stderr)
+        sys.exit(1)
+
+    reviews = r.json()
+    dismissed_count = 0
+    for rev in reviews:
+        if rev.get("state") == "APPROVED" and not rev.get("dismissed", False):
+            rev_id = rev.get("id")
+            r_dis = requests.post(f"{GITEA_API}/repos/{org}/{project}/pulls/{pr}/reviews/{rev_id}/dismissals", auth=(user, pwd), json={
+                "message": message
+            })
+            if r_dis.status_code in (200, 201):
+                print(f"[+] Successfully dismissed approval review #{rev_id} by {rev.get('user', {}).get('username')} on PR #{pr}")
+                dismissed_count += 1
+            else:
+                print(f"[!] Warning: Failed to dismiss review #{rev_id}: {r_dis.text}", file=sys.stderr)
+
+    if dismissed_count == 0:
+        print(f"[*] Notice: No active APPROVED reviews found to dismiss on PR #{pr}")
+
+
 def cmd_request_review(args):
     user, pwd = get_auth(args.user)
     org = args.org or DEFAULT_ORG
@@ -411,7 +452,25 @@ def cmd_get_pr(args):
         "head": pr_data.get("head", {}).get("ref"),
         "base": pr_data.get("base", {}).get("ref"),
         "author": pr_data.get("user", {}).get("username"),
-        "reviews": [{"user": rev.get("user", {}).get("username"), "state": rev.get("state"), "body": rev.get("body")} for rev in reviews]
+        "reviews": [
+            {
+                "id": rev.get("id"),
+                "user": rev.get("user", {}).get("username"),
+                "state": rev.get("state"),
+                "body": rev.get("body")
+            }
+            for rev in reviews if not rev.get("dismissed", False)
+        ],
+        "all_reviews": [
+            {
+                "id": rev.get("id"),
+                "user": rev.get("user", {}).get("username"),
+                "state": rev.get("state"),
+                "dismissed": rev.get("dismissed", False),
+                "body": rev.get("body")
+            }
+            for rev in reviews
+        ]
     }
     print(json.dumps(output, indent=2))
 
@@ -540,6 +599,16 @@ def main():
     p_rev.add_argument("--comment", required=True)
     p_rev.add_argument("--user", default=None)
     p_rev.set_defaults(func=cmd_review_pr)
+
+    # dismiss-review
+    p_dis = subparsers.add_parser("dismiss-review", help="Dismiss approved reviews on a pull request")
+    p_dis.add_argument("--project", required=True, help="Project name")
+    p_dis.add_argument("--org", default=DEFAULT_ORG, help="Organization name")
+    p_dis.add_argument("--pr", type=int, required=True, help="PR number")
+    p_dis.add_argument("--review-id", type=int, default=None, help="Specific review ID to dismiss")
+    p_dis.add_argument("--message", default="Dismissed due to integration test failure", help="Dismissal reason")
+    p_dis.add_argument("--user", default=None)
+    p_dis.set_defaults(func=cmd_dismiss_review)
 
     # request-review
     p_req_rev = subparsers.add_parser("request-review", help="Request or re-request review on a pull request")
