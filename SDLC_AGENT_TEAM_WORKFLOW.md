@@ -482,8 +482,13 @@ sequenceDiagram
     Note over PM, QA: Stage 3: 雙端整合測試驗收與 QA PR 開立 (Integration Testing & PR)
     PM->>QA: 派發整合測試工單 (簽出 test/mod-001，檢驗雙端整合)
     QA->>QA: 執行 tests/integration/ (100% API 端點正負向覆蓋)
-    QA->>QA: 測試全綠通過後提交 tests/integration/ 並開立 PR #3
-    QA-->>PM: 產出 reports/mod001-integration-report.md (全綠通過且覆蓋率 >= 80%)
+    alt 測試未達標 (Pass Rate < 100% 或 Coverage < 80%)
+        QA->>PM: 撤銷 PR 核准 (dismiss-review)，提交 REQUEST_CHANGES 一票否決
+        PM->>PM: 進入 Stage 4 Case A: 派發 Fix ➔ Re-Review ➔ Review Triage (嚴禁提早建 Tester)
+    else 測試全綠通過 (Pass Rate = 100% 且 Coverage >= 80%)
+        QA->>PM: 對 PR #1 & #2 提交正式 APPROVED 審查簽核，提交 tests/integration/ 並開立 PR #3
+        QA-->>PM: 產出 reports/mod001-integration-report.md (全綠通過且覆蓋率 >= 80%)
+    end
     Note over PM: Stage 4: QA & Merge Gatekeeper
     PM->>PM: 三端原子合併：依序執行 gitea-tool merge-pr 合併 PR #1、PR #2 與 PR #3 至 main
     PM->>PM: 更新 reports/wbs.md [x] 並關閉 Gitea Issue
