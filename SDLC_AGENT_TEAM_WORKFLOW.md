@@ -303,7 +303,7 @@ graph TD
   * 初始化專案倉庫與基礎結構。
   * 依據架構與測試計畫產出 `docs/wbs.md`，並在 Kanban 建立關聯任務。
   * 審查退件時進行 Triage 分流，建立 Fix 任務並掛接 Re-Review。
-  * 審查通過後執行 PR 合併（`gitea-tool merge-pr`）。
+  * 審查通過且通過 Stage 3 整合測試後，於 Stage 4 執行雙端 PR 原子合併（`gitea-tool merge-pr`），嚴禁在代碼審查完畢當下提前合併。
   * 專案最終驗收通過後，**全團隊唯一擁有權限打上正式 Gitea Release Tag（如 `v1.0.0`）並結案的角色**。
 * **核心鐵律**：**絕對嚴禁親自撰寫或修改業務代碼**；專注於進度排程與驗收分流。
 
@@ -337,7 +337,8 @@ graph TD
   * 撰寫後端單元測試於 `tests/unit/`。
   * 建立 `feature/mod-xxx-backend` 分支並提交 PR #1。
 * **核心鐵律**：
-  * **單元測試覆蓋率必須達標（$\ge 80\%$）**，否則嚴禁提交。
+  * **模組匯入健全度自檢（Import Integrity & Syntax Smoke Check）**：提交 PR 前，必須確保所有新增或修改的模組在無污染的乾淨命名空間下皆能正確解析與匯入。嚴禁存在超出套件邊界的非法相對匯入（Invalid Relative Import Depth）、遺失的 Re-export Bridge 或未捕獲的語法崩潰。
+  * **單元測試覆蓋率必須達標（$\ge 80\%$）**：且測試範疇必須實質覆蓋核心服務與入口初始化，嚴禁僅測孤立工具函式而掩蓋核心模組匯入缺陷，否則嚴禁提交。
   * 必須完全落實 SDD 定義的 Response Envelope 與安全加密規範。
 
 #### 5. `dev-frontend`（Frontend Developer）
@@ -356,7 +357,9 @@ graph TD
 * **定位**：資深技術主管、資安審查員與品質否決者。
 * **核心職責**：
   * 透過 Gitea PR 比對（`git diff origin/main...origin/<head_branch>`）審查代碼。
+  * **模組結構與靜態匯入稽核（Module & Import Integrity Audit）**：逐行審查 PR Diff 的依賴鏈與匯入路徑，嚴格防範越界相對引用（Relative Import Depth）、模組搬移後遺留的斷裂路徑或循環引用風險。
   * 查核 SDD 契約符合度、資安漏洞、異步 ORM 陷阱（如 MissingGreenlet）。
+  * **阻斷性語法與匯入缺陷直接否決權（Syntax/Import Defect Direct Veto）**：若發現基礎匯入路徑錯誤、循環引用風險或遺漏依賴，**視為一級重大阻斷性缺陷（Severity-1 Blocker），直接判定 `REQUEST_CHANGES` 退件**，絕不允許將基礎匯入錯誤遺漏至 Stage 3 整合測試。
   * **雙端測試完整度否決權**：後端覆蓋率 $<80\%$ 退件；前端缺少 Page 介面整合測試退件。
   * 提交審查結論（`APPROVE` 或 `REQUEST_CHANGES`）並產出結構化審查報告。
 * **核心鐵律**：**絕對嚴禁親自修改、Patch 或提交任何代碼**！所有修改要求必須以具體 Issue 條目交由 PM 退回原作者。
@@ -474,21 +477,27 @@ sequenceDiagram
         DevF-->>Rev: 自動喚醒 Re-Review 工單
         Rev-->>PM: 二審複查通過 (APPROVED)
     else 審查合格
-        Rev-->>PM: 判定 APPROVED
+        Rev-->>PM: 判定 APPROVED (無阻斷性缺陷)
     end
-    PM->>PM: 執行 gitea-tool merge-pr 合併 PR #1 與 PR #2 至 main
+    Note over PM, QA: Stage 3: 雙端整合測試驗收與 QA PR 開立 (Integration Testing & PR)
+    PM->>QA: 派發整合測試工單 (簽出 test/mod-001，檢驗雙端整合)
+    QA->>QA: 執行 tests/integration/ (100% API 端點正負向覆蓋)
+    QA->>QA: 測試全綠通過後提交 tests/integration/ 並開立 PR #3
+    QA-->>PM: 產出 reports/mod001-integration-report.md (全綠通過且覆蓋率 >= 80%)
+    Note over PM: Stage 4: QA & Merge Gatekeeper
+    PM->>PM: 三端原子合併：依序執行 gitea-tool merge-pr 合併 PR #1、PR #2 與 PR #3 至 main
+    PM->>PM: 更新 reports/wbs.md [x] 並關閉 Gitea Issue
     end
 
     %% ─────────────────────────────────────────────────────────────
     rect rgb(230, 230, 250)
-    Note over PM, QA: Phase 6: 實機容器化建置與全棧驗收
+    Note over PM, QA: Phase 6: 全模組實機容器化建置與全棧 E2E 驗收
     PM->>Ops: 派發容器化與環境組裝工單
     Ops->>Ops: 編寫 Dockerfile/Compose，實機啟動確認 Up & healthy，通過健康探針
-    Ops-->>PM: 容器組裝完成，PR 合併
-    PM->>QA: 派發 Stage 3 整合測試與全棧驗收工單
-    QA->>QA: 執行 tests/integration/ (100% API 端點正負向覆蓋)
-    QA->>QA: 執行 tests/e2e/ (Playwright 驅動真實瀏覽器模擬使用者全鏈路)
-    QA-->>PM: 產出 reports/mod001-integration-report.md (全綠通過)
+    Ops-->>PM: 容器組裝完成，PR 經 Reviewer 審查後合併
+    PM->>QA: 派發全棧 Headless E2E 驗收工單
+    QA->>QA: 針對運行的 Docker 全棧執行 Playwright (tests/e2e/) 跨瀏覽器全鏈路驗收
+    QA-->>PM: E2E 100% 通過
     end
 
     %% ─────────────────────────────────────────────────────────────
@@ -520,29 +529,30 @@ sequenceDiagram
   * [`docs/sdd.md`](file:///opt/data/workspace/mmms/docs/sdd.md)：API 契約、資料庫 ERD、統一 Response Envelope `{ success, data, error, timestamp }`、JWT / Bcrypt 安全規格。
   * [`docs/test-plan.md`](file:///opt/data/workspace/mmms/docs/test-plan.md)：測試邊界劃分、覆蓋率量化目標（單元 $\ge 80\%$，端點 100%）、測試環境準備規範。
 
-#### Phase 3: WBS 工單拆解與相依綁定 (WBS & Task Dispatching)
-* **執行者**：`dev-pm`。
-* **動作**：輸入 SDD 與 Test Plan，產出 [`docs/wbs.md`](file:///opt/data/workspace/mmms/docs/wbs.md)。透過 `kanban_create_task` 建立前後端並行任務，配置 `workspace_kind="git_worktree"` 實體隔離。
+#### Phase 3: IEEE 1058 WBS 拆解與相依綁定 (WBS & Task Dispatching)
+* **執行者**：`dev-pm`（調用 `wbs-manager`）。
+* **動作**：輸入 SDD 與 Test Plan，依據黃金模組上限法則（Endpoints $\le 5$、Models $\le 2$、代碼預估 200~450 行）與領域拓撲排序切分模組，產出符合 IEEE Std 1058 / ISO 21511 規範的 [`reports/wbs.md`](file:///opt/data/workspace/mmms/reports/wbs.md)。透過 `kanban_create_task` 建立前後端並行任務，配置 `workspace_kind="git_worktree"` 實體隔離。
 
-#### Phase 4: 雙端並行隔離實作 (Parallel Implementation)
+#### Phase 4: 雙端微步計畫與並行隔離實作 (Bite-Sized Plan & Parallel Implementation)
 * **執行者**：`dev-backend`（PR #1）與 `dev-frontend`（PR #2）。
+* **微步計畫防卡死機制**：兩端工程師動工前，**必須先調用 `plan`（或 `writing-plans`）技能**，將模組需求細化為 2~5 分鐘的微步任務清單（Micro-tasks）存於 `.hermes/plans/`，以「寫失敗測試 $\rightarrow$ 最少代碼 $\rightarrow$ 通過測試 $\rightarrow$ Git Commit」的 TDD 閉環步步推進，徹底杜絕單次變更大規模程式碼導致的認知過載與死迴圈。
 * **隔離保證**：各自在 `.worktrees/<task_id>` 獨立目錄開發，互不干擾。
 * **交付底線**：
-  * 後端：業務邏輯 + `tests/unit/`（Pytest 覆蓋率 $\ge 80\%$）。
-  * 前端：UI 元件 + `frontend/src/tests/unit/`（純邏輯）+ `frontend/src/tests/integration/`（**100% 路由頁面整合測試**）。
+  * 後端：業務邏輯 + `tests/unit/`（Pytest 覆蓋率 $\ge 80\%$，核心進入點匯入健全度自檢零錯誤）。
+  * 前端：UI 元件 + `frontend/src/tests/unit/`（純邏輯）+ `frontend/src/tests/integration/`（**100% 路由頁面整合測試**，TS 編譯建置零錯誤）。
 
 #### Phase 5: Gitea PR-First 審查與修正閉環 (Review & Triage Loop)
 * **執行者**：`dev-reviewer` 審查，`dev-pm` 閘門分流。
-* **審查標準**：SDD 契約符合度、資安漏洞（Bcrypt 工作係數、SQL 注入）、**前端 Page 元件整合測試是否存在**、**單元測試覆蓋率是否達標**。
+* **審查標準**：SDD 契約符合度、資安漏洞（Bcrypt 工作係數、SQL 注入）、**模組結構與靜態匯入健全度（嚴禁語法與匯入缺陷外溢至 Stage 3）**、**前端 Page 元件整合測試是否存在**、**單元測試覆蓋率是否達標**。
 * **閉環流轉**：
-  * 若不合規：Reviewer 提交 `REQUEST_CHANGES`。PM 自動啟動 Triage 派發 Fix 任務並建立 Re-Review 依賴，直至二審通過。
-  * 若合規：Reviewer 提交 `APPROVE`，PM 執行 `gitea-tool merge-pr` 合併至 `main`。
+  * 若不合規（含基礎匯入錯誤、安全漏洞或測試未達標）：Reviewer 提交 `REQUEST_CHANGES`。PM 自動啟動 Triage 派發 Fix 任務並建立 Re-Review 依賴，直至二審通過。
+  * 若合規（APPROVED）：**PM 嚴格禁止在此階段提前合併任何 PR**！PM 進入 Stage 3 動態派發 `dev-tester` 簽出 `test/mod-xxx` 整合分支執行 API 整合測試；唯有在 Stage 4 整合測試報告全綠（Pass Rate 100% 且 Coverage $\ge 80\%$）且 Tester 開立專屬 PR #3 後，PM 始執行後端、前端與整合測試之三端 PR 原子合併至 `main` 並更新 `reports/wbs.md`。
 
-#### Phase 6: 實機容器化建置與全棧驗收 (Live Assembly & Verification)
-* **執行者**：`dev-ops`（容器化與健康保證） $\rightarrow$ `dev-tester`（全棧驗收）。
+#### Phase 6: 全模組實機容器化建置與全棧 E2E 驗收 (Live Assembly & Headless E2E Acceptance)
+* **執行者**：`dev-ops`（容器化與健康保證） $\rightarrow$ `dev-tester`（全棧 E2E 驗收）。
 * **交付物**：
-  * `dev-ops`：撰寫 `Dockerfile` 與 `docker-compose.yml`，在本地實機執行 `docker compose up --build -d`，確認所有容器狀態為 `Up` 且 `healthy`，通過健康端點探針。
-  * `dev-tester`：撰寫 `tests/integration/`（100% 後端 API 端點驗證）與 `tests/e2e/`（Playwright 跨瀏覽器端到端測試），產出 [`reports/modXXX-integration-report.md`](file:///opt/data/workspace/mmms/reports/mod001-integration-report.md)。
+  * `dev-ops`：撰寫 `Dockerfile` 與 `docker-compose.yml`，在本地實機執行 `docker compose up --build -d`，確認所有容器狀態為 `Up` 且 `healthy`，通過健康端點探針；提交 PR 經 `dev-reviewer` 審查通過後由 PM 合併。
+  * `dev-tester`：針對即時運行的 Docker 全棧環境執行跨系統 Playwright 端到端驗收（`tests/e2e/`），驗證真實瀏覽器使用者全鏈路，產出最終驗收結論。
 
 #### Phase 7: 正式發布與里程碑結案 (Release & Sign-Off)
 * **執行者**：`dev-pm` 專屬執行。
@@ -616,7 +626,7 @@ $$\text{Surface Gate} = \begin{cases} \text{Pass}, & \text{Coverage}_{\text{endp
 | [`docs/srs.md`](file:///opt/data/workspace/mmms/docs/srs.md) | `dev-pm` / User | Phase -1 | 軟體需求規格書、Grill-Me 靈魂拷問結果、FR/NFR 編號清單與驗收條件 |
 | [`docs/sdd.md`](file:///opt/data/workspace/mmms/docs/sdd.md) | `dev-architect` | Phase 1 | 系統架構圖、PostgreSQL 資料庫設計、RESTful API 端點與統一 Envelope 規格、安全協議 |
 | [`docs/test-plan.md`](file:///opt/data/workspace/mmms/docs/test-plan.md) | `dev-tester` | Phase 2 | 測試邊界矩陣、量化覆蓋率目標（80% 門檻）、測試資料策略與驗收環境規格 |
-| [`docs/wbs.md`](file:///opt/data/workspace/mmms/docs/wbs.md) | `dev-pm` | Phase 3 | 工作分解結構清單、模組相依圖、Task ID 與 Kanban 工單映射矩陣 |
+| [`reports/wbs.md`](file:///opt/data/workspace/mmms/reports/wbs.md) | `dev-pm` | Phase 3 | IEEE Std 1058 / ISO 21511 規範之工作分解結構、模組黃金上限切分、Work Package 字典與動態 Fix 追蹤矩陣 |
 | `reports/modXXX-review-report.md` | `dev-reviewer` | Phase 5 | PR Diff 審查清單、架構合規性、資安漏洞稽核、雙端測試覆蓋率檢查結果 |
 | `reports/modXXX-re-review-report.md` | `dev-reviewer` | Phase 5 (Re) | 針對修正 Commit 的複查記錄，逐項核銷 Review Issue 清單 |
 | `docker-compose.yml` & `Dockerfile` | `dev-ops` | Phase 6a | 多階段構建設定檔、非 root 安全配置、容器健康檢查探針宣告 |
