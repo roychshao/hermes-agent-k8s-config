@@ -335,8 +335,9 @@ graph TD
 * **核心職責**：
   * 依據 SDD 規格實作 FastAPI 路由、Pydantic Schema 與 SQLAlchemy 2.0 Async 模型。
   * 撰寫後端單元測試於 `tests/unit/`。
-  * 建立 `feature/mod-xxx-backend` 分支並提交 PR #1。
+  * **建立專屬分支與獨立 PR 交付**：在專屬 Worktree 內建立 `feature/mod-xxx-backend` 分支並開立專屬後端 PR #1。
 * **核心鐵律**：
+  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-backend` 分支；嚴禁在前端分支（如 `feature/mod-xxx-frontend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬後端 PR，**絕對嚴禁共用、繼承或認領前端現有 PR**！
   * **模組匯入健全度自檢（Import Integrity & Syntax Smoke Check）**：提交 PR 前，必須確保所有新增或修改的模組在無污染的乾淨命名空間下皆能正確解析與匯入。嚴禁存在超出套件邊界的非法相對匯入（Invalid Relative Import Depth）、遺失的 Re-export Bridge 或未捕獲的語法崩潰。
   * **單元測試覆蓋率必須達標（$\ge 80\%$）**：且測試範疇必須實質覆蓋核心服務與入口初始化，嚴禁僅測孤立工具函式而掩蓋核心模組匯入缺陷，否則嚴禁提交。
   * 必須完全落實 SDD 定義的 Response Envelope 與安全加密規範。
@@ -348,8 +349,9 @@ graph TD
   * 建立雙層前端測試：
     1. 純邏輯單元測試：`frontend/src/tests/unit/`（Store, Schema, Interceptors）。
     2. Page 元件介面整合測試：`frontend/src/tests/integration/`（**覆蓋 100% 路由頁面**）。
-  * 建立 `feature/mod-xxx-frontend` 分支並提交 PR #2。
+  * **建立專屬分支與獨立 PR 交付**：在專屬 Worktree 內建立 `feature/mod-xxx-frontend` 分支並開立專屬前端 PR #2。
 * **核心鐵律**：
+  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-frontend` 分支；嚴禁在後端分支（如 `feature/mod-xxx-backend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬前端 PR，**絕對嚴禁共用、繼承或認領後端現有 PR**！
   * **嚴禁只測純 JavaScript 工具函式**；所有 Page 元件（`LoginForm`, `RegisterForm`, `UserProfile`, `AdminUserManager`）必須具備在 JSDOM 虛擬環境中驗證掛載渲染、表單操作與錯誤反饋的整合測試。
   * 單元測試覆蓋率同樣需達 $\ge 80\%$。
 
@@ -362,7 +364,9 @@ graph TD
   * **阻斷性語法與匯入缺陷直接否決權（Syntax/Import Defect Direct Veto）**：若發現基礎匯入路徑錯誤、循環引用風險或遺漏依賴，**視為一級重大阻斷性缺陷（Severity-1 Blocker），直接判定 `REQUEST_CHANGES` 退件**，絕不允許將基礎匯入錯誤遺漏至 Stage 3 整合測試。
   * **雙端測試完整度否決權**：後端覆蓋率 $<80\%$ 退件；前端缺少 Page 介面整合測試退件。
   * 提交審查結論（`APPROVE` 或 `REQUEST_CHANGES`）並產出結構化審查報告。
-* **核心鐵律**：**絕對嚴禁親自修改、Patch 或提交任何代碼**！所有修改要求必須以具體 Issue 條目交由 PM 退回原作者。
+* **核心鐵律**：
+  * **前後端雙 PR 獨立性與邊界審查鐵律（Dual-PR Boundary & Separation Law）**：審查模組時必須強制驗證 Gitea 上是否存在分別獨立的後端 PR（`feature/mod-xxx-backend`）與前端 PR（`feature/mod-xxx-frontend`）；若發現前後端代碼混入同一 PR 或任一方未開立獨立 PR，直接行使一票否決權判定 `REQUEST_CHANGES` 退件。
+  * **絕對嚴禁親自修改、Patch 或提交任何代碼**！所有修改要求必須以具體 Issue 條目交由 PM 退回原作者。
 
 #### 7. `dev-ops`（DevOps & Site Reliability Engineer）
 * **定位**：容器化專家、系統整合運維與環境健康保證人。
@@ -536,12 +540,12 @@ sequenceDiagram
 
 #### Phase 3: IEEE 1058 WBS 拆解與相依綁定 (WBS & Task Dispatching)
 * **執行者**：`dev-pm`（調用 `wbs-manager`）。
-* **動作**：輸入 SDD 與 Test Plan，依據黃金模組上限法則（Endpoints $\le 5$、Models $\le 2$、代碼預估 200~450 行）與領域拓撲排序切分模組，產出符合 IEEE Std 1058 / ISO 21511 規範的 [`reports/wbs.md`](file:///opt/data/workspace/mmms/reports/wbs.md)。透過 `kanban_create_task` 建立前後端並行任務，配置 `workspace_kind="git_worktree"` 實體隔離。
+* **動作**：輸入 SDD 與 Test Plan，依據黃金模組上限法則（Endpoints $\le 5$、Models $\le 2$、代碼預估 200~450 行）與領域拓撲排序切分模組，產出符合 IEEE Std 1058 / ISO 21511 規範的 [`reports/wbs.md`](file:///opt/data/workspace/mmms/reports/wbs.md)。透過 `kanban_create` 建立前後端並行任務，必須傳遞 `workspace_kind="worktree"` 與顯式分支參數 `branch_name="feature/mod-xxx-backend"` 及 `branch_name="feature/mod-xxx-frontend"` 達成實體分支隔離。
 
 #### Phase 4: 雙端微步計畫與並行隔離實作 (Bite-Sized Plan & Parallel Implementation)
-* **執行者**：`dev-backend`（PR #1）與 `dev-frontend`（PR #2）。
+* **執行者**：`dev-backend`（PR #1，`feature/mod-xxx-backend`）與 `dev-frontend`（PR #2，`feature/mod-xxx-frontend`）。
 * **微步計畫防卡死機制**：兩端工程師動工前，**必須先調用 `plan`（或 `writing-plans`）技能**，將模組需求細化為 2~5 分鐘的微步任務清單（Micro-tasks）存於 `.hermes/plans/`，以「寫失敗測試 $\rightarrow$ 最少代碼 $\rightarrow$ 通過測試 $\rightarrow$ Git Commit」的 TDD 閉環步步推進，徹底杜絕單次變更大規模程式碼導致的認知過載與死迴圈。
-* **隔離保證**：各自在 `.worktrees/<task_id>` 獨立目錄開發，互不干擾。
+* **隔離保證**：各自在 `.worktrees/<task_id>` 獨立目錄開發，**絕對嚴禁 `cd` 進入根倉庫**，各自開立獨立 Gitea PR，互不干擾。
 * **交付底線**：
   * 後端：業務邏輯 + `tests/unit/`（Pytest 覆蓋率 $\ge 80\%$，核心進入點匯入健全度自檢零錯誤）。
   * 前端：UI 元件 + `frontend/src/tests/unit/`（純邏輯）+ `frontend/src/tests/integration/`（**100% 路由頁面整合測試**，TS 編譯建置零錯誤）。
