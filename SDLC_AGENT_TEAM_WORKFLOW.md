@@ -558,7 +558,7 @@ sequenceDiagram
 * **審查標準**：SDD 契約符合度、資安漏洞（Bcrypt 工作係數、SQL 注入）、**模組結構與靜態匯入健全度（嚴禁語法與匯入缺陷外溢至 Stage 3）**、**前端 Page 元件整合測試是否存在**、**單元測試覆蓋率是否達標**。
 * **閉環流轉**：
   * 若不合規（含基礎匯入錯誤、安全漏洞或測試未達標）：Reviewer 提交 `REQUEST_CHANGES`。PM 自動啟動 Triage 派發 Fix 任務並建立 Re-Review 依賴，直至二審通過。
-  * 若合規（APPROVED）：**PM 嚴格禁止在此階段提前合併任何 PR**！PM 進入 Stage 3 動態派發 `dev-tester`：Tester **必須首先閱讀 `docs/test_plan.md`（TTM 矩陣）與 `docs/sdd.md`（API 契約）提取既定測試案例，嚴禁盲猜代碼**，簽出 `test/mod-xxx` 整合分支實作並執行 API 整合測試；唯有在 Stage 4 整合測試報告全綠（Pass Rate 100% 且 Coverage $\ge 80\%$）且 Tester 開立專屬 PR #3 後，PM 始執行後端、前端與整合測試之三端 PR 原子合併至 `main` 並更新 `reports/wbs.md`。
+  * 若合規（APPROVED）：**PM 嚴格禁止在此階段提前合併任何 PR**！PM 進入 Stage 3 動態派發 `dev-tester`：Tester **必須首先閱讀 `docs/test_plan.md`（TTM 矩陣）與 `docs/sdd.md`（API 契約）提取既定測試案例，嚴禁盲猜代碼**，簽出 `test/mod-xxx` 整合分支實作並執行 API 整合測試；唯有在 Stage 4 整合測試報告全綠（Pass Rate 100% 且 Coverage $\ge 80\%$）且 Tester 開立專屬 PR #3 後，PM 始執行後端、前端與整合測試之三端 PR 原子合併至 `main`（若前端或後端 PR 已由 Tester PR 包含而在 Gitea 返回 405 無差異，PM 必須呼叫 `gitea-tool close-pr` 關閉該 PR 並留下合併說明，嚴禁懸掛 open 狀態）並更新 `reports/wbs.md`。
 
 #### Phase 6: 全模組實機容器化建置與全棧 E2E 驗收 (Live Assembly & Headless E2E Acceptance)
 * **執行者**：`dev-ops`（容器化與健康保證） $\rightarrow$ `dev-tester`（全棧 E2E 驗收）。
