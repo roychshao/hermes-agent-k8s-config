@@ -338,7 +338,7 @@ graph TD
   * 撰寫後端單元測試於 `tests/unit/`。
   * **建立專屬分支與獨立 PR 交付**：在專屬 Worktree 內建立 `feature/mod-xxx-backend` 分支並開立專屬後端 PR #1。
 * **核心鐵律**：
-  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-backend` 分支；嚴禁在前端分支（如 `feature/mod-xxx-frontend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬後端 PR，**絕對嚴禁共用、繼承或認領前端現有 PR**！
+  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-backend` 分支；嚴禁在前端分支（如 `feature/mod-xxx-frontend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬後端 PR（**必須帶上 `--reviewers dev-reviewer` 明確指派審查者**，嚴禁建立未指派審查者的孤立 PR），**絕對嚴禁共用、繼承或認領前端現有 PR**！
   * **模組匯入健全度自檢（Import Integrity & Syntax Smoke Check）**：提交 PR 前，必須確保所有新增或修改的模組在無污染的乾淨命名空間下皆能正確解析與匯入。嚴禁存在超出套件邊界的非法相對匯入（Invalid Relative Import Depth）、遺失的 Re-export Bridge 或未捕獲的語法崩潰。
   * **單元測試覆蓋率必須達標（$\ge 80\%$）**：且測試範疇必須實質覆蓋核心服務與入口初始化，嚴禁僅測孤立工具函式而掩蓋核心模組匯入缺陷，否則嚴禁提交。
   * 必須完全落實 SDD 定義的 Response Envelope 與安全加密規範。
@@ -352,7 +352,9 @@ graph TD
     2. Page 元件介面整合測試：`frontend/src/tests/integration/`（**覆蓋 100% 路由頁面**）。
   * **建立專屬分支與獨立 PR 交付**：在專屬 Worktree 內建立 `feature/mod-xxx-frontend` 分支並開立專屬前端 PR #2。
 * **核心鐵律**：
-  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-frontend` 分支；嚴禁在後端分支（如 `feature/mod-xxx-backend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬前端 PR，**絕對嚴禁共用、繼承或認領後端現有 PR**！
+  * **專屬獨立分支與獨立 PR 鐵律（Dedicated Branch & Independent PR Law）**：嚴格在分配的 Worktree 內作業，**絕對禁止執行 `cd` 進入專案根目錄**；動工前第一步必須確認處於 `feature/mod-xxx-frontend` 分支；嚴禁在後端分支（如 `feature/mod-xxx-backend`）或 `main` 分支 commit/push；代碼完成後必須親自透過 `gitea-tool create-pr` 開立專屬前端 PR（**必須帶上 `--reviewers dev-reviewer` 明確指派審查者**，嚴禁建立未指派審查者的孤立 PR），**絕對嚴禁共用、繼承或認領後端現有 PR**！
+  * **嚴禁提交 `node_modules` 與建置產物鐵律（Zero Build Artifacts & Git Ignore Law）**：絕對禁止將 `node_modules/`、`frontend/node_modules/` 或建置產物（`dist/`, `.vite/`, `*.tsbuildinfo`）提交（git commit / push）至版本庫；動工時必須確認並確保專案根目錄 `.gitignore`（與 `frontend/.gitignore`）已正確包含前端忽略規則，Commit 前務必檢查 `git status` 杜絕巨型相依套件污染 Git 倉庫！
+  * **Tirith 終端安全防禦相容規範**：嚴禁在 `npm` / `npx` / `yarn` 指令中使用 `2>&1` 重導向語法（防止安全掃描器誤將 `2>&1` 判定為 package 名稱並因 lookup timeout 而阻斷）；執行 npm 相關指令一律使用原生標準語法或標準管線（如 `| tail -n 20`）。
   * **嚴禁只測純 JavaScript 工具函式**；所有 Page 元件（`LoginForm`, `RegisterForm`, `UserProfile`, `AdminUserManager`）必須具備在 JSDOM 虛擬環境中驗證掛載渲染、表單操作與錯誤反饋的整合測試。
   * 單元測試覆蓋率同樣需達 $\ge 80\%$。
 
