@@ -327,6 +327,7 @@ graph TD
   * Phase 6 容器啟動後，撰寫跨系統全棧 E2E 測試（`tests/e2e/`），透過 Playwright 驗證完整使用者旅程。
   * 產出 [`reports/modXXX-integration-report.md`](file:///opt/data/workspace/mmms/reports/mod001-integration-report.md)。
 * **核心鐵律**：
+  * **規格文件與測試計畫強制首讀鐵律（Pre-Test Specification & Test Plan Mandatory Reading Law）**：**絕對禁止**僅靠檢視現有業務實作代碼盲猜測試案例！編寫整合測試或 E2E 測試前，第一步必須強制閱讀 `docs/test_plan.md`（查閱 Test Traceability Matrix 與既定 Test Case ID）與 `docs/sdd.md`（查閱 API 契約、Response Envelope 與錯誤狀態碼規範）。所有測試斷言必須 100% 來自規格文件，若實作與規格不符必須判定為缺陷，嚴禁私自竄改測試迎合代碼。
   * **嚴禁跨入 `frontend/` 目錄撰寫任何 TypeScript/React 測試**（前端 UI 整合測試由前端開發者自負）。
   * 專注於 API 邊界、資料庫事務完整性與端到端瀏覽器驗收。
 
@@ -555,7 +556,7 @@ sequenceDiagram
 * **審查標準**：SDD 契約符合度、資安漏洞（Bcrypt 工作係數、SQL 注入）、**模組結構與靜態匯入健全度（嚴禁語法與匯入缺陷外溢至 Stage 3）**、**前端 Page 元件整合測試是否存在**、**單元測試覆蓋率是否達標**。
 * **閉環流轉**：
   * 若不合規（含基礎匯入錯誤、安全漏洞或測試未達標）：Reviewer 提交 `REQUEST_CHANGES`。PM 自動啟動 Triage 派發 Fix 任務並建立 Re-Review 依賴，直至二審通過。
-  * 若合規（APPROVED）：**PM 嚴格禁止在此階段提前合併任何 PR**！PM 進入 Stage 3 動態派發 `dev-tester` 簽出 `test/mod-xxx` 整合分支執行 API 整合測試；唯有在 Stage 4 整合測試報告全綠（Pass Rate 100% 且 Coverage $\ge 80\%$）且 Tester 開立專屬 PR #3 後，PM 始執行後端、前端與整合測試之三端 PR 原子合併至 `main` 並更新 `reports/wbs.md`。
+  * 若合規（APPROVED）：**PM 嚴格禁止在此階段提前合併任何 PR**！PM 進入 Stage 3 動態派發 `dev-tester`：Tester **必須首先閱讀 `docs/test_plan.md`（TTM 矩陣）與 `docs/sdd.md`（API 契約）提取既定測試案例，嚴禁盲猜代碼**，簽出 `test/mod-xxx` 整合分支實作並執行 API 整合測試；唯有在 Stage 4 整合測試報告全綠（Pass Rate 100% 且 Coverage $\ge 80\%$）且 Tester 開立專屬 PR #3 後，PM 始執行後端、前端與整合測試之三端 PR 原子合併至 `main` 並更新 `reports/wbs.md`。
 
 #### Phase 6: 全模組實機容器化建置與全棧 E2E 驗收 (Live Assembly & Headless E2E Acceptance)
 * **執行者**：`dev-ops`（容器化與健康保證） $\rightarrow$ `dev-tester`（全棧 E2E 驗收）。
